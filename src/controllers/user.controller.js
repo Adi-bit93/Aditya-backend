@@ -92,7 +92,6 @@ const loginUser = asyncHandler(async (req, res) =>{
    if(!username || !email){
       throw new ApiError(400, "username or email is required")
    }
-
    const user = await User.findOne({
       $or: [{username}, {email}]
    })
@@ -100,22 +99,18 @@ const loginUser = asyncHandler(async (req, res) =>{
    if(!user){
       throw new ApiError(404, "user does not exist")
    }
-
    const ispasswordValid = await user.isPasswordCorrect(password)
-
    if(!ispasswordValid){
       throw new ApiError(401, "Invalid credentials")
    }
 
    const {accessToken, refreshToken} = await generateAccessTokenAndRefreshToken(user._id)
-
    const loggedInUser = await User.findById(user._id).select( "-password -refreshToken")
 
    const options = {
       httpOnly: true,
       secure: true
    }
-
    return res
    .status(200)
    .cookie("accessToken", accessToken, options)
