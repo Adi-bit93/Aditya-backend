@@ -4,6 +4,7 @@ import {User} from '../models/user.model.js';
 import { uploadOncloudinary } from '../utils/cloudinary.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 
+
 const generateAccessTokenAndRefreshToken = async(userId) =>
 {
    try {
@@ -87,9 +88,19 @@ const registerUser = asyncHandler(async (req, res) =>{
 })
 
 const loginUser = asyncHandler(async (req, res) =>{
-   const {email, username, password} = req.body
 
-   if(!username || !email){
+    // req body -> data
+    // username or email
+    //find the user
+    //password check
+    //access and referesh token
+    //send cookie
+    
+   const {email, username, password} = req.body
+   console.log("Req.body :", req.body)
+   console.log("email :", email);
+
+   if(!username && !email){
       throw new ApiError(400, "username or email is required")
    }
    const user = await User.findOne({
