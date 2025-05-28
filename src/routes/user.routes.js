@@ -43,5 +43,12 @@ router.route("/avatar").patch(verifyJWT, upload.single("avatar"), updateUserAvat
 router.route("/cover-image").patch(verifyJWT, upload.single("coverImage"),updateUserCoverImage)
 router.route("/c/:username").get(verifyJWT, getUserChannelProfile) // we use : here because we are getting data from url 
 router.route("/history").get(verifyJWT, getWatchHistory)
+router.route("/uploadvideo").post(
+    verifyJWT,  upload.fields([
+    { name: "video", maxCount: 1 },
+    { name: "thumbnail", maxCount: 1 }
+  ]),
+  uploadVideo
+)
 
 export default router;

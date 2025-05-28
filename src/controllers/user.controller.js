@@ -1,9 +1,11 @@
 import {asyncHandler} from '../utils/asyncHandler.js';
 import {ApiError} from '../utils/ApiError.js';
 import {User} from '../models/user.model.js';
+import {Video} from '../models/video.model.js';
 import { uploadOncloudinary } from '../utils/cloudinary.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import jwt from 'jsonwebtoken';
+import { upload } from '../middlewares/multer.middleware.js';
 
 
 const generateAccessTokenAndRefreshToken = async(userId) =>
@@ -285,18 +287,19 @@ const updateUserAvatar = asyncHandler(async(req, res) =>{
       new ApiResponse(200, user, "Avatar Image updated successfully" )
    )
 })
+
 const updateUserCoverImage = asyncHandler(async(req, res) =>{
    const coverImageLocalPath = req.file?.path
    if(!coverImageLocalPath){
       throw new ApiError(400, "cover Image file is missing")
    }
-
+   
    const coverImage  = await uploadOncloudinary(coverImageLocalPath)
-
+   
    if(!coverImage.url){
       throw new ApiError(400, "error while uploading on cover image")
    }
-
+   
    const user = await User.findByIdAndUpdate(
       req.user?._id,
       {
@@ -315,27 +318,27 @@ const updateUserCoverImage = asyncHandler(async(req, res) =>{
 })
 
 const getUserChannelProfile = asyncHandler(async(req, res) =>{
-  const {username} = req.params
-
-  if(!username?.trim()){
-   throw new ApiError(400, "username is missing")
-  }
-
-  const channel = await User.aggregate([
-   {
-      $match :{
-         username : username
-      }
-   },
-   {
-      $lookup: {
-         from : "subscriptions",
-         localField : "_id",
-         foreignField : "channel",
-         as : "Subscriber"
-      }
-   },
-   {
+   const {username} = req.params
+   
+   if(!username?.trim()){
+      throw new ApiError(400, "username is missing")
+   }
+   
+   const channel = await User.aggregate([
+      {
+         $match :{
+            username : username
+         }
+      },
+      {
+         $lookup: {
+            from : "subscriptions",
+            localField : "_id",
+            foreignField : "channel",
+            as : "Subscriber"
+         }
+      },
+      {
       $lookup: {
          from : "subscriptions",
          localField : "_id",
@@ -372,17 +375,17 @@ const getUserChannelProfile = asyncHandler(async(req, res) =>{
          email : 1
       }
    }
-  ])
+])
 
-  if(!channel?.length){
-     throw new ApiError(400, "channel does not exists")
-  }
+if(!channel?.length){
+   throw new ApiError(400, "channel does not exists")
+}
 
-  return res
-  .status(200)
-  .json(
+return res
+.status(200)
+.json(
    new ApiResponse(200, channel[0], "user channel fetched successfully" )
-  )
+)
 })
 
 const getWatchHistory = asyncHandler(async (req, res) =>{
@@ -427,7 +430,7 @@ const getWatchHistory = asyncHandler(async (req, res) =>{
          }
       }
    ])
-
+   
    return res 
    .status(200)
    .json(
@@ -437,6 +440,43 @@ const getWatchHistory = asyncHandler(async (req, res) =>{
          "watch history fetched successfully"
       )
    )
+})
+
+const uploadVideo = asyncHandler(async(req, res) =>{
+
+   
+   const videoPath = req.files?.video?.[0]?.path
+   const thumbnailPath = req.files?.thumbnail?.[0]?.path
+
+   if(!videoPath || !thumbnailPath){
+      throw new ApiError(400, "video file or thumbnail is missing")
+   }
+
+   const video = await uploadOncloudinary(videoPath);
+   const thumbnail = await uploadOncloudinary(thumbnailPath);
+
+   if(!video?.url || !thumbnail?.url){
+      throw new ApiError(400, "video or thumbnail upload failed")
+   }
+    
+   const {title, discription, duration, views} = req.body;
+
+   const newVideo = await Video.create({
+      videoFile: video.url,
+      thumbnail: thumbnail.url,
+      title, 
+      discription,
+      duration: Number(duration),
+      views : Number(views),
+      owner: req.user?._id    
+   })
+
+   return res
+   .status(200)
+   .json(
+      new ApiResponse(200, newVideo, "Video uploaded successfully")
+   )
+
 })
 
 
@@ -451,5 +491,6 @@ export {
    updateUserAvatar,
    updateUserCoverImage,
    getUserChannelProfile,
-   getWatchHistory
+   getWatchHistory,
+   uploadVideo
 }
