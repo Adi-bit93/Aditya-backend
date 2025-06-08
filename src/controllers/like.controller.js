@@ -77,11 +77,71 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
 const toggleTweetLike = asyncHandler(async (req, res) => {
     const {tweetId} = req.params
     //TODO: toggle like on tweet
+    if(!tweetId){
+        throw new ApiError(400, "Tweet ID is required")
+    }
+
+    const existingLike = await Like.findOne(
+        {
+            tweet : tweetId,
+            likedBy: req.user?._id
+        }
+    )
+    if(existingLike){
+        await Like.deleteOne({
+            tweet : tweetId,
+            likedBy: req.user?._id
+        })
+
+        return res
+        .status(200)
+        .json(
+            new ApiResponse(200, {}, "Like removed successfully")
+        )
+    }
+    const newLike = await Like.create({
+        tweet : tweetId,
+        likedBy: req.user?._id
+    })
+    if(!newLike){
+        throw new ApiError(500, "Failed to Like the tweet")
+    }
+
+    return res 
+    .status(201)
+    .json(
+        new ApiResponse(201, newLike, "Tweet Liked successfully")
+    )
+
 }
 )
 
 const getLikedVideos = asyncHandler(async (req, res) => {
     //TODO: get all liked videos
+
+    const userId = req.user?._id;
+
+    if(!userId){
+        throw new ApiError(400, "User ID is required")
+    }
+    
+    const likedVideos = await Like.find({
+        likedBy: req.user?._id,}).populate('video', 'title description thumbnailUrl');
+
+    if(!likedVideos){
+        throw new ApiError(404, "No liked videos found")
+    }
+
+    const videos = likedVideos
+        .filter(item => item.video !== null)
+        .map(item => item.video);
+    
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, videos, "Liked videos retrieved successfully")
+    )
+
 })
 
 export {
