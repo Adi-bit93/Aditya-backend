@@ -9,6 +9,7 @@ app.use(cors({
     credentials: true,
 }))
 
+app.use('/api/v1/videos', videoRouter);
 app.use(express.json({limit:"16kb"}))
 app.use(express.urlencoded({extended:true, limit:"16kb"}))  //for form data
 app.use(express.static("public")) 
@@ -29,7 +30,6 @@ app.use('/api/v1/users', userRouter)
 app.use('/api/v1/comments', commentRouter); 
 app.use('/api/v1/likes', likeRouter)
 app.use('/api/v1/playlists', playlistRouter);
-app.use('/api/v1/videos', videoRouter);
 
 
 

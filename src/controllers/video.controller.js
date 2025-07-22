@@ -1,37 +1,38 @@
-import {Video} from "../models/video.model.js";
-import {ApiError} from "../utils/ApiError.js";
+import { v2 as cloudinary } from "cloudinary";
+
+import { Video } from "../models/video.model.js";
+import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import {uploadOncloudinary} from "../utils/cloudinary.js";
+import { uploadOncloudinary } from "../utils/cloudinary.js";
 
 
-const publishAVideo = asyncHandler(async (req, res) =>
-{
-    const {title, description} = req.body;
+const publishAVideo = asyncHandler(async (req, res) => {
+    const { title, description } = req.body;
 
-    const videoFile = req.file?.path;
+    const videoFile = req.files?.videoFile?.[0]?.path;
 
-    if(!videoFile || !title){
+    if (!videoFile || !title) {
         throw new ApiError(400, "Video file and title are required");
     }
 
-    const cloudUploadResponse = await cloudinary.uploader.upload(videoFile, 
+    const cloudUploadResponse = await cloudinary.uploader.upload(videoFile,
         {
             resource_type: "video",
             folder: "videos",
         }
     )
-    
+
     const video = await Video.create(
         {
             title,
             description,
-            views : 0,
-            videoUrl: cloudUploadResponse.secure_url,
+            views: 0,
+            videoFile: cloudUploadResponse.secure_url,
             cloudinaryId: cloudUploadResponse.public_id,
-            duration:cloudUploadResponse.duration,
+            duration: cloudUploadResponse.duration,
             thumbnail: cloudUploadResponse.thumbnail_url,
-            owner : req.user?._id
+            owner: req.user?._id
         }
     )
 
@@ -43,8 +44,65 @@ const publishAVideo = asyncHandler(async (req, res) =>
 })
 
 const getAllVideos = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
     //TODO: get all videos based on query, sort, pagination
+    try {
+        const {
+            page = 1,
+            limit = 10,
+            query = "",
+            sortBy = "createdAt",
+            sortType = "desc",
+            userId
+        } = req.query
+
+        const filters = {}
+
+        if (userId) {
+            filters.user = userId;
+        }
+
+        if (query.trim()) {
+            filters.$or = [
+                { title: { $regex: query, $options: "i" } },
+                { description: { $regex: query, $options: "i" } }
+            ];
+        }
+
+        const sortOrder = sortType === "asc" ? 1 : -1;
+        const sortOptions = {};
+        sortOptions[sortBy] = sortOrder;
+
+        const skip = parseInt(page - 1) * limit;
+
+        const allVideos = await Video.countDocuments(filters)
+
+        const videos = await Video.find(filters)
+            .sort(sortOptions)
+            .skip(skip)
+            .limit(limit);
+
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(
+                    200,
+                    {
+                        videos,
+                        pagination: {
+                            total: allVideos,
+                            page: parseInt(page),
+                            limit: parseInt(limit),
+                            totalPages: Math.ceil(allVideos / limit)
+                        }
+                    },
+                    "Videos fetched successfully"
+                )
+            )
+    } catch (error) {
+        res.status(500).json(
+            new ApiResponse(500, {}, "failed to fetch Videos", error.message)
+        )
+    }
 })
 
 
