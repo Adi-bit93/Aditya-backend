@@ -130,6 +130,47 @@ const getVideoById = asyncHandler(async (req, res) => {
 const updateVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
     //TODO: update video details like title, description, thumbnail
+    if(!videoId){
+        throw new ApiError(400, "Video ID is required")
+    }
+
+    const {title, description} = req.body
+    const video = await Video.findById(videoId)
+
+    if(!video){
+        throw new ApiError(404, "video not found")
+    }
+
+    if(title){
+        video.title = title
+    }
+    if(description){
+        video.description = description
+    }
+
+    const thumbnailFile = req?.files?.thumbnail?.[0]?.path;
+    if (thumbnailFile) {
+        const cloudUploadResponse = await uploadOncloudinary(thumbnailFile, "thumbnails");
+        if (cloudUploadResponse?.secure_url) {
+            video.thumbnail = cloudUploadResponse.secure_url;
+            video.cloudinaryThumbnailId = cloudUploadResponse.public_id;
+        } else {
+            throw new ApiError(500, "Failed to upload thumbnail to cloud storage");
+        }
+    }
+
+    const updatedVideo = await video.save()
+    if(!updatedVideo){
+        throw new ApiError(500, "something went wrong while updating the video")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, updatedVideo, "Video updated successfully")
+    )
+
+
 
 })
 
