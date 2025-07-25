@@ -38,6 +38,18 @@ const userSchema = new mongoose.Schema(
                 ref:"Video"
             }    
         ],
+        subscriptions: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: "User"
+            }
+        ],
+        subscribers: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: "User"
+            }
+        ],
         password:{
             type:String,
             required:[true, "password is required"]
