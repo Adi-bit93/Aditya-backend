@@ -28,7 +28,7 @@ const toggleSubscription = asyncHandler(async (req, res) => {
 
     if(isSubscribed){
         user.subscription.pull(channelId);
-        channel.subscribers.pull(userId);
+        channel.subscribers.pull(userId);  
     }else{
         user.subscription.push(channelId);
         channel.subscribers.push(userId);
@@ -47,11 +47,48 @@ const toggleSubscription = asyncHandler(async (req, res) => {
 // controller to return subscriber list of a channel
 const getUserChannelSubscribers = asyncHandler(async (req, res) => {
     const {channelId} = req.params
+    if(!channelId){
+        throw new ApiError("channelId is required")
+    }
+
+    const channel = await User.findById(channelId).populate("subscribers", "name profilePicture")
+    if(!channel){
+        throw new ApiError(404, "channel not found")
+    }
+    const subscribers = channel.subscribers;
+    if(!subscribers || subscribers.Length === 0){
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(200, [], "No subscribers found for this channel")
+            )
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, subscribers, "Subscribers fetched successfully")
+        )
 })
 
 // controller to return channel list to which user has subscribed
 const getSubscribedChannels = asyncHandler(async (req, res) => {
     const { subscriberId } = req.params
+
+    if(!subscriberId){
+        throw new ApiError(400, "Subscriber Id is required")
+    }
+
+    const subscriber = await User.findById(subscriberId).populate("subscriptions", "fullName avatar subscribers ")
+    if(!subscriber){
+        throw new ApiError(404, "Subscriber not found")
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, subscriber.subscription, "Subscribed channels fetched successfully")
+        )
 })
 
 export {
