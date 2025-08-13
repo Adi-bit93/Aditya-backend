@@ -7,7 +7,6 @@ import {asyncHandler} from "../utils/asyncHandler.js"
 
 const toggleSubscription = asyncHandler(async (req, res) => {
     const {channelId} = req.params
-    // TODO: toggle subscription
     const userId = req.user?._id;
 
     if(!channelId){
@@ -24,13 +23,19 @@ const toggleSubscription = asyncHandler(async (req, res) => {
     }
 
     const user = await User.findById(userId);
-    const isSubscribed = user.Subscription.includes(channelId)
+     if (!user) {
+        throw new ApiError(404, "Subscriber not found");
+    }
+    if (!Array.isArray(user.subscriptions)) {
+        user.subscriptions = [];
+    }
+    const isSubscribed = user.subscriptions.includes(channelId);
 
     if(isSubscribed){
-        user.subscription.pull(channelId);
+        user.subscriptions.pull(channelId);
         channel.subscribers.pull(userId);  
     }else{
-        user.subscription.push(channelId);
+        user.subscriptions.push(channelId);
         channel.subscribers.push(userId);
     }
 
@@ -78,6 +83,7 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
     if(!subscriberId){
         throw new ApiError(400, "Subscriber Id is required")
     }
+    
 
     const subscriber = await User.findById(subscriberId).populate("subscriptions", "fullName avatar subscribers ")
     if(!subscriber){
